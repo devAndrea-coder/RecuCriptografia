@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="description" content="" />
+        <meta name="author" content="" />
+        <title>Login - Sistema Médicos</title>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css" rel="stylesheet" />
+        <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+
+        <!-- Google Sign-In API -->
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <!-- AES -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    </head>
+    <body class="bg-primary">
+        <div id="layoutAuthentication">
+            <div id="layoutAuthentication_content">
+                <main>
+                    <div class="container">
+                        <div class="row justify-content-center">
+                            <div class="col-lg-5">
+                                <div class="card shadow-lg border-0 rounded-lg mt-5">
+                                    <div class="card-header">
+                                        <h3 class="text-center font-weight-light my-4">Login - Sistema Médicos</h3>
+                                    </div>
+                                    <div class="card-body">
+                                        <form id="loginForm">
+                                            <div class="form-floating mb-3">
+                                                <input class="form-control" id="dni" type="text" placeholder="DNI" required maxlength="8" />
+                                                <label for="dni">DNI (8 dígitos)</label>
+                                            </div>
+                                            <div class="form-floating mb-3">
+                                                <input class="form-control" id="clave" type="password" placeholder="Password" required />
+                                                <label for="clave">Contraseña</label>
+                                            </div>
+                                            <div id="errorMessage" class="alert alert-danger" style="display: none;">
+                                                <span id="errorText"></span>
+                                            </div>
+                                            <div class="d-flex align-items-center justify-content-between mt-4 mb-0">
+                                                <button class="btn btn-primary" type="submit" id="loginBtn">
+                                                    <span id="loginBtnText">Iniciar Sesión</span>
+                                                    <span id="loginSpinner" class="spinner-border spinner-border-sm ms-1" style="display: none;"></span>
+                                                </button>
+                                            </div>
+                                            <hr>
+                                        </form>
+                                        <div class="google-signin-container">
+                                            <div id="g_id_signin"></div>
+                                        </div>
+                                        <div id="g_id_onload"
+                                             data-client_id="683576227359-a17m87huqbg468fu1tlknkcnru125fl6.apps.googleusercontent.com"
+                                             data-callback="handleCredentialResponse"
+                                             data-auto_prompt="false">
+                                        </div>
+                                    </div>
+                                    <div class="card-footer text-center py-3">
+                                        <div class="small"><a href="registro.html">¿Necesitas una cuenta? ¡Regístrate!</a></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+        <script>
+            // VARIABLES PARA ALMACENAR DATOS EN MEMORIA
+            let sessionData = {
+                medicoLogueado: null,
+                isLoggedIn: false
+            };
+
+            // FUNCIÓN PARA MOSTRAR/OCULTAR SPINNER DE CARGA
+            function toggleLoading(loading) {
+                const loginSpinner = document.getElementById('loginSpinner');
+                const loginBtnText = document.getElementById('loginBtnText');
+                const loginBtn = document.getElementById('loginBtn');
+                
+                if (loading) {
+                    loginSpinner.style.display = 'inline-block';
+                    loginBtnText.textContent = 'Iniciando...';
+                    loginBtn.disabled = true;
+                } else {
+                    loginSpinner.style.display = 'none';
+                    loginBtnText.textContent = 'Iniciar Sesión';
+                    loginBtn.disabled = false;
+                }
+            }
+
+            // FUNCIÓN PARA MOSTRAR MENSAJES DE ERROR
+            function mostrarError(mensaje) {
+                const errorDiv = document.getElementById('errorMessage');
+                const errorText = document.getElementById('errorText');
+                errorText.textContent = mensaje;
+                errorDiv.style.display = 'block';
+                
+                // OCULTAR DESPUÉS DE 5 SEGUNDOS
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 5000);
+            }
+
+            // FUNCIÓN PARA GUARDAR DATOS DE SESIÓN
+            function guardarSesion(datos) {
+                try {
+                    // Guardar en memoria (principal)
+                    sessionData.medicoLogueado = datos.medicoData;
+                    sessionData.isLoggedIn = true;
+                    
+                    console.log('Datos de sesión guardados:', datos.medicoData);
+                } catch (error) {
+                    console.error('Error al guardar sesión:', error);
+                }
+            }
+
+            // AGREGAR LISTENER PARA EL SUBMIT DEL FORMULARIO
+            document.getElementById("loginForm").addEventListener("submit", function (e) {
+                e.preventDefault();
+                
+                // OCULTAR MENSAJES DE ERROR PREVIOS
+                document.getElementById('errorMessage').style.display = 'none';
+                
+                // MOSTRAR SPINNER DE CARGA
+                toggleLoading(true);
+
+                const data = {
+                    dni: document.getElementById("dni").value.trim(),
+                    clave: document.getElementById("clave").value.trim()
+                };
+
+                // VALIDAR CAMPOS VACÍOS
+                if (!data.dni || !data.clave) {
+                    toggleLoading(false);
+                    mostrarError('Por favor complete todos los campos');
+                    return;
+                }
+
+                // VALIDAR FORMATO DNI
+                if (!data.dni.match(/^\d{8}$/)) {
+                    toggleLoading(false);
+                    mostrarError('El DNI debe tener exactamente 8 dígitos');
+                    return;
+                }
+
+                // ENVIAR PETICIÓN AL SERVLET
+                fetch('login', {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error de red: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(json => {
+                    toggleLoading(false);
+                    
+                    if (json.status === "ok") {
+                        // LOGIN EXITOSO - GUARDAR DATOS DEL MÉDICO
+                        const medicoData = {
+                            logiMedi: json.usuario || data.dni,
+                            dni: data.dni,
+                            loginTime: new Date().getTime(),
+                            loginMethod: json.loginMethod || 'normal'
+                        };
+                        
+                        // GUARDAR DATOS DE SESIÓN
+                        guardarSesion({ medicoData: medicoData });
+                        
+                        console.log('Login exitoso, redirigiendo...');
+                        
+                        // REDIRIGIR A PÁGINA PRINCIPAL
+                        window.location.href = json.redirect || 'tabla.html';
+                    } else {
+                        // ERROR DE LOGIN
+                        mostrarError(json.message || 'DNI o contraseña incorrectos');
+                    }
+                })
+                .catch(error => {
+                    toggleLoading(false);
+                    console.error("Error:", error);
+                    mostrarError('Error de conexión. Intente nuevamente.');
+                });
+            });
+
+            // VERIFICAR SI YA HAY UNA SESIÓN ACTIVA AL CARGAR LA PÁGINA
+            window.addEventListener('load', function() {
+                try {
+                    // Verificar si hay sesión activa en memoria
+                    if (sessionData.isLoggedIn && sessionData.medicoLogueado) {
+                        console.log('Sesión activa detectada, redirigiendo...');
+                        window.location.href = 'tabla.html';
+                        return;
+                    }
+                    
+                    // Limpiar datos antiguos si no hay sesión válida
+                    sessionData = { medicoLogueado: null, isLoggedIn: false };
+                } catch (error) {
+                    console.error('Error al verificar sesión:', error);
+                }
+
+                // INICIALIZAR GOOGLE SIGN-IN
+                initializeGoogleSignIn();
+            });
+
+            // VALIDAR SOLO NÚMEROS EN DNI Y MÁXIMO 8 DÍGITOS
+            document.getElementById('dni').addEventListener('input', function() {
+                // Solo permitir números
+                this.value = this.value.replace(/[^0-9]/g, '');
+                
+                // Máximo 8 dígitos
+                if (this.value.length > 8) {
+                    this.value = this.value.slice(0, 8);
+                }
+            });
+
+            // VALIDAR DNI COMPLETO AL SALIR DEL CAMPO
+            document.getElementById('dni').addEventListener('blur', function() {
+                const dni = this.value.trim();
+                if (dni.length > 0 && dni.length < 8) {
+                    mostrarError('El DNI debe tener exactamente 8 dígitos');
+                    this.focus();
+                }
+            });
+            
+            // FUNCIÓN PARA INICIALIZAR GOOGLE SIGN-IN
+            function initializeGoogleSignIn() {
+                if (typeof google !== 'undefined' && google.accounts) {
+                    google.accounts.id.initialize({
+                        client_id: "683576227359-a17m87huqbg468fu1tlknkcnru125fl6.apps.googleusercontent.com",
+                        callback: handleCredentialResponse
+                    });
+                    
+                    google.accounts.id.renderButton(
+                        document.getElementById("g_id_signin"),
+                        { 
+                            theme: "outline", 
+                            size: "large",
+                            text: "signin_with",
+                            shape: "rectangular"
+                        }
+                    );
+                } else {
+                    // Reintentar después de un breve delay
+                    setTimeout(initializeGoogleSignIn, 500);
+                }
+            }
+            
+            // FUNCIÓN PARA MANEJAR RESPUESTA DE GOOGLE
+            function handleCredentialResponse(response) {
+                console.log('Google credential response:', response);
+                
+                // TOKEN JWT DE GOOGLE - VALIDA AL USUARIO
+                const id_token = response.credential;
+
+                // MOSTRAR INDICADOR DE CARGA
+                mostrarError('Iniciando sesión con Google...');
+
+                // REALIZAR PETICIÓN AL SERVLET (backend) - VALIDAR Y CREAR JWT PROPIO
+                fetch('logingoogle', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id_token})
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('Error de red: ' + res.status);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    console.log('Google login response:', data);
+                    
+                    if (data.resultado === 'ok') {
+                        // CREAR TOKEN Y GUARDARLO
+                        setCookie("token", data.token, 7);
+                        
+                        // GUARDAR DATOS DE SESIÓN PARA GOOGLE LOGIN
+                        const medicoData = {
+                            logiMedi: 'Google User',
+                            email: 'google_user@gmail.com',
+                            loginTime: new Date().getTime(),
+                            loginMethod: 'google'
+                        };
+                        
+                        guardarSesion({ medicoData: medicoData });
+                        
+                        // REDIRIGIR
+                        window.location.href = "tabla.html";
+                    } else {
+                        mostrarError('Error en login con Google');
+                    }
+                })
+                .catch(err => {
+                    console.error('Google login error:', err);
+                    mostrarError('Error de conexión con Google. Intente nuevamente.');
+                });
+            }
+
+            // CREA O ACTUALIZA UNA COOKIE - USA NOMBRE, VALOR Y DÍAS
+            function setCookie(nombre, valor, dias) {
+                const fecha = new Date();
+                fecha.setTime(fecha.getTime() + (dias * 24 * 60 * 60 * 1000));
+                const expira = "expires=" + fecha.toUTCString();
+                document.cookie = nombre + "=" + valor + ";" + expira + ";path=/";
+            }
+
+            // FUNCIÓN AUXILIAR PARA OBTENER COOKIES
+            function getCookie(nombre) {
+                const name = nombre + "=";
+                const decodedCookie = decodeURIComponent(document.cookie);
+                const ca = decodedCookie.split(';');
+                for(let i = 0; i < ca.length; i++) {
+                    let c = ca[i];
+                    while (c.charAt(0) == ' ') {
+                        c = c.substring(1);
+                    }
+                    if (c.indexOf(name) == 0) {
+                        return c.substring(name.length, c.length);
+                    }
+                }
+                return "";
+            }
+
+            // FUNCIÓN PARA LIMPIAR SESIÓN
+            function limpiarSesion() {
+                sessionData = { medicoLogueado: null, isLoggedIn: false };
+                // Limpiar cookies también
+                setCookie("token", "", -1);
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="description" content="" />
+        <meta name="author" content="" />
+        <title>Gestión de Médicos</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+        <!-- Biblioteca CryptoJS para cifrado AES -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+        <style>
+            .sb-nav-fixed {
+                padding-left: 0;
+            }
+            .sb-topnav {
+                height: 56px;
+            }
+            .sb-sidenav {
+                width: 225px;
+                height: 100vh;
+                position: fixed;
+                left: 0;
+                top: 56px;
+                z-index: 1038;
+            }
+            #layoutSidenav_content {
+                margin-left: 225px;
+                padding-top: 56px;
+            }
+            .table-responsive {
+                overflow-x: auto;
+            }
+            .btn-sm {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.875rem;
+            }
+            .navbar .dropdown-menu {
+                z-index: 1101 !important;
+                position: absolute;
+            }
+            .alert.position-fixed {
+                top: 80px;
+                right: 20px;
+                z-index: 9999;
+                min-width: 300px;
+                max-width: 500px;
+            }
+        </style>
+    </head>
+
+    <body class="sb-nav-fixed">
+        <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark fixed-top">
+            <!-- Navbar Brand-->
+            <a class="navbar-brand ps-3" href="#">Sistema de Médicos</a>
+
+            <!-- Sidebar Toggle-->
+            <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0 text-white" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <!-- Navbar-->
+            <ul class="navbar-nav ms-auto me-3 me-lg-4">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user fa-fw"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                        <li> <a class="dropdown-item" href="cambiarPassword.html">
+                                <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
+                                Cambiar contraseña
+                            </a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><a class="dropdown-item" href="#!" onclick="cerrarSesion()">Logout</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <div id="layoutSidenav">
+            <div id="layoutSidenav_nav">
+                <nav class="sb-sidenav accordion sb-sidenav-dark bg-dark" id="sidenavAccordion">
+                    <div class="sb-sidenav-menu">
+                        <div class="nav">
+                            <a class="nav-link active" href="#">
+                                <div class="sb-nav-link-icon"><i class="fas fa-user-md"></i></div>
+                                Gestión de Médicos
+                            </a>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+
+            <div id="layoutSidenav_content">
+                <main>
+                    <div class="container-fluid px-4">
+                        <br>
+                        <!-- ENCABEZADO DE LA PÁGINA -->
+                        <div class="d-sm-flex align-items-center justify-content-between mb-4">
+                            <h1 class="h3 mb-0 text-gray-800">GESTIÓN DE MÉDICOS</h1>
+                            <div>
+                                <a class="btn btn-success mr-2" href="ReporteMedicoServlet" target="_blank">
+                                    <i class="fas fa-file-pdf"></i> Exportar Reporte
+                                </a>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#medicoModal" onclick="nuevoMedico()">
+                                    <i class="fas fa-plus fa-sm"></i> Nuevo Médico
+                                </button>
+                            </div>
+                        </div>
+                       
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="fas fa-table me-1"></i>
+                                Lista de Médicos
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table id="tablaMedicos" class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>DNI</th>
+                                                <th>AP. PATERNO</th>
+                                                <th>AP. MATERNO</th>
+                                                <th>NOMBRE</th>
+                                                <th>FECHA NAC.</th>
+                                                <th>LOGIN</th>
+                                                <th>ACCIONES</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="8" class="text-center">Cargando médicos...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                <footer class="py-4 bg-light mt-auto">
+                    <div class="container-fluid px-4">
+                        <div class="d-flex align-items-center justify-content-between small">
+                            <div class="text-muted">Copyright &copy; Sistema de Médicos 2025</div>
+                        </div>
+                    </div>
+                </footer>
+            </div>
+        </div>
+
+        <!-- Modal para Crear/Editar Médico -->
+        <div class="modal fade" id="medicoModal" tabindex="-1" aria-labelledby="medicoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="medicoModalLabel">Nuevo Médico</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form id="medicoForm">
+                        <div class="modal-body">
+                            <input type="hidden" id="medicoId" name="medicoId">
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="dni" class="form-label">DNI *</label>
+                                        <input type="text" class="form-control" id="dni" name="dni" required maxlength="8" pattern="[0-9]{8}">
+                                        <div class="form-text">Ingrese 8 dígitos</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="login" class="form-label">Login *</label>
+                                        <input type="text" class="form-control" id="login" name="login" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="apPaterno" class="form-label">Apellido Paterno *</label>
+                                        <input type="text" class="form-control" id="apPaterno" name="apPaterno" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="apMaterno" class="form-label">Apellido Materno *</label>
+                                        <input type="text" class="form-control" id="apMaterno" name="apMaterno" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="nombre" class="form-label">Nombre *</label>
+                                        <input type="text" class="form-control" id="nombre" name="nombre" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="fechaNac" class="form-label">Fecha de Nacimiento *</label>
+                                        <input type="date" class="form-control" id="fechaNac" name="fechaNac" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Contraseña *</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" name="password" required minlength="4">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Mínimo 4 caracteres</div>
+                                <small class="form-text text-muted" id="passwordHelp">En edición: deje vacío para mantener la actual</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="guardarMedico()">
+                                <span id="btnGuardarText">Guardar</span>
+                                <span id="btnGuardarSpinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+       <!-- Modal eliminar -->
+        <div class="modal fade" id="eliminarModal" tabindex="-1" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="eliminarModalLabel">Confirmar eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        ¿Está seguro de que desea eliminar al médico <strong><span id="medicoEliminarNombre"></span></strong>?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger" onclick="confirmarEliminacionMedico()">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedor de alertas -->
+        <div id="alertContainer" class="mt-3"></div>
+
+        <!-- Modal de Logout -->
+        <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="logoutModalLabel">Cerrar Sesión</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ¿Está seguro de que desea cerrar la sesión?
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="confirmarLogout()">Cerrar Sesión</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+        <script>
+            // Variables globales
+            let medicos = [];
+            let medicoIdEliminar = null;
+
+            // Inicialización cuando el DOM está listo
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('DOM cargado, iniciando aplicación...');
+                cargarMedicos();
+                configurarEventos();
+            });
+
+            // Configurar todos los event listeners
+            function configurarEventos() {
+                console.log('Configurando eventos...');
+
+                // Toggle para mostrar/ocultar contraseña
+                const toggleBtn = document.getElementById('togglePassword');
+                if (toggleBtn) {
+                    toggleBtn.addEventListener('click', togglePassword);
+                }
+
+                // Validación de DNI solo números y máximo 8 dígitos
+                const dniInput = document.getElementById('dni');
+                if (dniInput) {
+                    dniInput.addEventListener('input', validarDNI);
+                }
+
+                // Limpiar formulario cuando se cierra el modal
+                const medicoModal = document.getElementById('medicoModal');
+                if (medicoModal) {
+                    medicoModal.addEventListener('hidden.bs.modal', limpiarFormulario);
+                }
+
+                // Toggle del sidebar
+                const sidebarToggle = document.getElementById('sidebarToggle');
+                if (sidebarToggle) {
+                    sidebarToggle.addEventListener('click', event => {
+                        event.preventDefault();
+                        document.body.classList.toggle('sb-sidenav-toggled');
+                    });
+                }
+
+                console.log('Eventos configurados correctamente');
+            }
+
+            // Función para toggle de contraseña
+            function togglePassword() {
+                const input = document.getElementById('password');
+                const icon = document.querySelector('#togglePassword i');
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            }
+
+            // Validar DNI - solo números y máximo 8 dígitos
+            function validarDNI() {
+                const dniInput = document.getElementById('dni');
+                dniInput.value = dniInput.value.replace(/\D/g, '').substring(0, 8);
+            }
+
+            // Cargar lista de médicos desde el backend
+            async function cargarMedicos() {
+                console.log('Cargando médicos...');
+
+                try {
+                    const response = await fetch('estudiante', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const json = await response.json();
+
+                    if (json.success) {
+                        medicos = json.data || [];
+                        renderizarTabla();
+                        console.log(`Médicos cargados: ${medicos.length}`);
+                    } else {
+                        throw new Error(json.message || 'Error desconocido al cargar médicos');
+                    }
+                } catch (error) {
+                    console.error('Error al cargar médicos:', error);
+                    mostrarAlerta(`Error al cargar médicos: ${error.message}`, 'danger');
+                    // Mostrar mensaje de error en la tabla
+                    document.querySelector('#tablaMedicos tbody').innerHTML = 
+                        '<tr><td colspan="8" class="text-center text-danger">Error al cargar datos</td></tr>';
+                }
+            }
+
+            // Renderizar la tabla con los datos de médicos
+            function renderizarTabla() {
+                console.log('Renderizando tabla...');
+                const tbody = document.querySelector('#tablaMedicos tbody');
+
+                if (!medicos || medicos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center">No hay médicos registrados</td></tr>';
+                    return;
+                }
+
+                // Generar filas de la tabla
+                tbody.innerHTML = medicos.map(medico => `
+                    <tr>
+                        <td>${medico.codiMedi}</td>
+                        <td>${medico.ndniMedi || ''}</td>
+                        <td>${medico.appaMedi || ''}</td>
+                        <td>${medico.apmaMedi || ''}</td>
+                        <td>${medico.nombMedi || ''}</td>
+                        <td>${medico.fechNaciMedi || ''}</td>
+                        <td>${medico.logiMedi || ''}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm me-1" onclick="editarMedico(${medico.codiMedi})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="prepararEliminarMedico(${medico.codiMedi}, '${(medico.nombMedi + ' ' + medico.appaMedi).replace(/'/g, '\\\'')}')" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                console.log('Tabla renderizada correctamente');
+            }
+
+            // Abrir modal para crear nuevo médico
+            function nuevoMedico() {
+                console.log('Abriendo modal para nuevo médico...');
+
+                limpiarFormulario();
+                document.getElementById('medicoModalLabel').textContent = 'Nuevo Médico';
+                document.getElementById('password').required = true;
+                document.getElementById('passwordHelp').style.display = 'none';
+
+                // Abrir el modal usando Bootstrap
+                const modal = new bootstrap.Modal(document.getElementById('medicoModal'));
+                modal.show();
+
+                console.log('Modal de nuevo médico abierto');
+            }
+
+            // Cargar datos de médico en el modal para edición
+            function editarMedico(id) {
+                console.log('Editando médico con ID:', id);
+
+                const medico = medicos.find(m => m.codiMedi === id);
+                if (!medico) {
+                    mostrarAlerta('Médico no encontrado', 'warning');
+                    return;
+                }
+
+                // Llenar formulario con datos existentes
+                document.getElementById('medicoId').value = medico.codiMedi;
+                document.getElementById('dni').value = medico.ndniMedi || '';
+                document.getElementById('apPaterno').value = medico.appaMedi || '';
+                document.getElementById('apMaterno').value = medico.apmaMedi || '';
+                document.getElementById('nombre').value = medico.nombMedi || '';
+                document.getElementById('fechaNac').value = medico.fechNaciMedi || '';
+                document.getElementById('login').value = medico.logiMedi || '';
+                document.getElementById('password').value = ''; // Siempre vacío en edición
+
+                // Configurar modal para edición
+                document.getElementById('password').required = false;
+                document.getElementById('passwordHelp').style.display = 'block';
+                document.getElementById('medicoModalLabel').textContent = 'Editar Médico';
+
+                // Abrir el modal
+                const modal = new bootstrap.Modal(document.getElementById('medicoModal'));
+                modal.show();
+
+                console.log('Modal de edición abierto para médico:', medico.nombMedi);
+            }
+
+            // Limpiar formulario y quitar clases de validación
+            function limpiarFormulario() {
+                console.log('Limpiando formulario...');
+
+                const form = document.getElementById('medicoForm');
+                if (form) {
+                    form.reset();
+                }
+
+                document.getElementById('medicoId').value = '';
+
+                // Quitar clases de validación
+                document.querySelectorAll('.form-control').forEach(element => {
+                    element.classList.remove('is-valid', 'is-invalid');
+                });
+
+                // Resetear contraseña como requerida por defecto
+                document.getElementById('password').required = true;
+                document.getElementById('passwordHelp').style.display = 'none';
+            }
+
+            // Validar formulario antes de enviar
+            function validarFormulario() {
+                console.log('Validando formulario...');
+
+                let esValido = true;
+                const esNuevo = !document.getElementById('medicoId').value;
+
+                // Campos obligatorios
+                const camposObligatorios = ['dni', 'apPaterno', 'apMaterno', 'nombre', 'fechaNac', 'login'];
+
+                camposObligatorios.forEach(campoId => {
+                    const elemento = document.getElementById(campoId);
+                    const valor = elemento.value.trim();
+
+                    if (!valor) {
+                        elemento.classList.add('is-invalid');
+                        elemento.classList.remove('is-valid');
+                        esValido = false;
+                    } else {
+                        elemento.classList.remove('is-invalid');
+                        elemento.classList.add('is-valid');
+                    }
+                });
+
+                // Validación específica de DNI (debe tener exactamente 8 dígitos)
+                const dniElemento = document.getElementById('dni');
+                const dni = dniElemento.value.trim();
+                if (dni.length !== 8 || !/^\d{8}$/.test(dni)) {
+                    dniElemento.classList.add('is-invalid');
+                    dniElemento.classList.remove('is-valid');
+                    esValido = false;
+                }
+
+                // Validación de contraseña
+                const passwordElemento = document.getElementById('password');
+                const password = passwordElemento.value;
+
+                // Para nuevo médico, contraseña es obligatoria y mínimo 4 caracteres
+                if (esNuevo) {
+                    if (!password || password.length < 4) {
+                        passwordElemento.classList.add('is-invalid');
+                        passwordElemento.classList.remove('is-valid');
+                        esValido = false;
+                    } else {
+                        passwordElemento.classList.remove('is-invalid');
+                        passwordElemento.classList.add('is-valid');
+                    }
+                }
+                // Para edición, si se proporciona contraseña debe tener al menos 4 caracteres
+                else if (password) {
+                    if (password.length < 4) {
+                        passwordElemento.classList.add('is-invalid');
+                        passwordElemento.classList.remove('is-valid');
+                        esValido = false;
+                    } else {
+                        passwordElemento.classList.remove('is-invalid');
+                        passwordElemento.classList.add('is-valid');
+                    }
+                }
+
+                console.log('Validación completada. Es válido:', esValido);
+                return esValido;
+            }
+
+            // Función para guardar médico
+            async function guardarMedico() {
+                console.log('Iniciando guardado de médico...');
+
+                // Validar formulario
+                if (!validarFormulario()) {
+                    mostrarAlerta('Por favor complete correctamente todos los campos obligatorios', 'warning');
+                    return;
+                }
+
+                // Mostrar spinner de carga
+                const btnTexto = document.getElementById('btnGuardarText');
+                const btnSpinner = document.getElementById('btnGuardarSpinner');
+                const btnGuardar = document.querySelector('#medicoModal .btn-primary');
+
+                btnTexto.textContent = 'Guardando...';
+                btnSpinner.classList.remove('d-none');
+                btnGuardar.disabled = true;
+
+                const medicoId = document.getElementById('medicoId').value;
+                const esNuevo = !medicoId;
+
+                try {
+                    // Construir objeto médico
+                    const medicoData = {
+                        ndniMedi: document.getElementById('dni').value.trim(),
+                        appaMedi: document.getElementById('apPaterno').value.trim(),
+                        apmaMedi: document.getElementById('apMaterno').value.trim(),
+                        nombMedi: document.getElementById('nombre').value.trim(),
+                        fechNaciMedi: document.getElementById('fechaNac').value,
+                        logiMedi: document.getElementById('login').value.trim()
+                    };
+
+                    if (!esNuevo) {
+                        medicoData.codiMedi = parseInt(medicoId);
+                    }
+
+                    const password = document.getElementById('password').value;
+                    if (password && password.trim() !== '') {
+                        // Enviar contraseña en texto plano - el servlet la hasheará con BCrypt
+                        medicoData.passMedi = password;
+                    }
+
+                    console.log('Enviando datos al servidor...');
+
+                    const response = await fetch('estudiante', {
+                        method: esNuevo ? 'POST' : 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json; charset=UTF-8',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(medicoData)
+                    });
+
+                    let resultado;
+                    const contentType = response.headers.get('content-type');
+
+                    if (contentType && contentType.includes('application/json')) {
+                        resultado = await response.json();
+                    } else {
+                        const text = await response.text();
+                        throw new Error(`Respuesta no es JSON: ${text.substring(0, 200)}`);
+                    }
+
+                    if (resultado.success) {
+                        // Cerrar modal correctamente
+                        const modalElement = document.getElementById('medicoModal');
+                        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                        if (modalInstance) {
+                            modalInstance.hide();
+                        }
+
+                        // Eliminar backdrop manualmente si queda colgado
+                        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                        document.body.classList.remove('modal-open');
+                        document.body.style = '';
+
+                        // Mostrar mensaje de éxito
+                        mostrarAlerta(resultado.message || `Médico ${esNuevo ? 'creado' : 'actualizado'} correctamente`, 'success');
+
+                        // Recargar médicos
+                        await cargarMedicos();
+
+                        console.log('Médico guardado exitosamente');
+                    } else {
+                        throw new Error(resultado.message || 'Error desconocido al guardar médico');
+                    }
+
+                } catch (error) {
+                    console.error('Error al guardar médico:', error);
+                    mostrarAlerta(`Error al guardar: ${error.message}`, 'danger');
+                } finally {
+                    // Restaurar botón
+                    btnTexto.textContent = 'Guardar';
+                    btnSpinner.classList.add('d-none');
+                    btnGuardar.disabled = false;
+                }
+            }
+
+            // Preparar modal de confirmación para eliminar médico
+            function prepararEliminarMedico(id, nombreCompleto) {
+                console.log('Preparando eliminación de médico:', id, nombreCompleto);
+
+                medicoIdEliminar = id;
+                document.getElementById('medicoEliminarNombre').textContent = nombreCompleto;
+
+                const modal = new bootstrap.Modal(document.getElementById('eliminarModal'));
+                modal.show();
+            }
+            
+            // Confirmar y ejecutar eliminación de médico
+            async function confirmarEliminacionMedico() {
+                console.log('Confirmando eliminación de médico:', medicoIdEliminar);
+
+                if (!medicoIdEliminar) {
+                    mostrarAlerta('ID de médico no válido', 'warning');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`estudiante?codiMedi=${medicoIdEliminar}`, {
+                        method: 'DELETE'
+                    });
+
+                    const resultado = await response.json();
+
+                    if (resultado.success) {
+                        // Cerrar modal
+                        const modalElement = document.getElementById('eliminarModal');
+                        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                        if (modalInstance) {
+                            modalInstance.hide();
+                        }
+
+                        // Mostrar mensaje de éxito
+                        mostrarAlerta(resultado.message || 'Médico eliminado correctamente', 'success');
+
+                        // Recargar tabla
+                        await cargarMedicos();
+
+                        // Limpiar variable
+                        medicoIdEliminar = null;
+
+                        console.log('Médico eliminado exitosamente');
+                    } else {
+                        throw new Error(resultado.message || 'Error desconocido al eliminar médico');
+                    }
+                } catch (error) {
+                    console.error('Error al eliminar médico:', error);
+                    mostrarAlerta(`Error al eliminar: ${error.message}`, 'danger');
+                }
+            }
+
+            // Mostrar alerta temporal
+            function mostrarAlerta(mensaje, tipo = 'info') {
+                console.log('Mostrando alerta:', tipo, mensaje);
+
+                const alertContainer = document.getElementById('alertContainer');
+                const alertId = 'alert_' + Date.now();
+
+                const iconClass = tipo === 'success' ? 'check-circle' : 
+                                 tipo === 'danger' ? 'exclamation-triangle' : 'info-circle';
+
+                const alertHTML = `
+                    <div id="${alertId}" class="alert alert-${tipo} alert-dismissible fade show position-fixed" role="alert" style="top: 80px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px;">
+                        <i class="fas fa-${iconClass}"></i>
+                        ${mensaje}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+
+                alertContainer.insertAdjacentHTML('beforeend', alertHTML);
+
+                // Auto-cerrar después de 5 segundos
+                setTimeout(() => {
+                    const alertElement = document.getElementById(alertId);
+                    if (alertElement) {
+                        const bsAlert = new bootstrap.Alert(alertElement);
+                        bsAlert.close();
+                    }
+                }, 5000);
+            }
+
+            // Mostrar modal de confirmación de logout
+            function cerrarSesion() {
+                console.log('Mostrando modal de logout...');
+                const modal = new bootstrap.Modal(document.getElementById('logoutModal'));
+                modal.show();
+            }
+
+            // Ejecutar logout y redirigir
+            function confirmarLogout() {
+                console.log('Cerrando sesión...');
+
+                // Cerrar modal
+                const modalElement = document.getElementById('logoutModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+
+                // Mostrar mensaje de despedida
+                mostrarAlerta('Cerrando sesión...', 'info');
+
+                // Redirigir después de un breve delay
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            }
+        </script>
+    </body>
+</html>
